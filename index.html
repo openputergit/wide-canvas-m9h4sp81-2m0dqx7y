@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirBlue Leads - Employee Management System</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ffffff 0%, #0066ff 100%);
+            min-height: 100vh;
+            font-family: 'Poppins', sans-serif;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        
+        .modal-container {
+            max-height: 90vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        
+        .modal-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .modal-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 102, 255, 0.5);
+            border-radius: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+    </style>
+</head>
+<body class="font-sans">
+    <div id="app" class="min-h-screen">
+        <!-- Login Section -->
+        <div v-if="!isLoggedIn" class="flex items-center justify-center min-h-screen p-4">
+            <div class="glass-effect p-8 rounded-xl w-full max-w-md">
+                <div class="flex justify-center mb-6">
+                    <img v-if="companyLogo" :src="companyLogo" alt="Company Logo" class="h-20 mb-2">
+                    <div v-else class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                        <i class="bi bi-building text-4xl text-blue-600"></i>
+                    </div>
+                </div>
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-blue-900">AirBlue Leads</h1>
+                    <p class="text-gray-600">Employee Management System</p>
+                </div>
+                <form @submit.prevent="login" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Username</label>
+                        <input type="text" v-model="loginData.username" placeholder="Enter your username" class="w-full p-3 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Password</label>
+                        <input type="password" v-model="loginData.password" placeholder="Enter your password" class="w-full p-3 rounded-lg border focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div v-else>
+            <!-- Navigation -->
+            <nav class="glass-effect p-4 sticky top-0 z-10">
+                <div class="container mx-auto flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <img v-if="companyLogo" :src="companyLogo" alt="Company Logo" class="h-10">
+                        <h1 class="text-2xl font-bold text-blue-900">AirBlue Leads</h1>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <button @click="currentView = 'dashboard'" class="text-blue-900 hover:text-blue-700 font-medium" :class="{'border-b-2 border-blue-600': currentView === 'dashboard'}">
+                            <i class="bi bi-speedometer2 mr-1"></i> Dashboard
+                        </button>
+                        <button v-if="userRole === 'admin'" @click="currentView = 'employees'" class="text-blue-900 hover:text-blue-700 font-medium" :class="{'border-b-2 border-blue-600': currentView === 'employees'}">
+                            <i class="bi bi-people mr-1"></i> Employees
+                        </button>
+                        <button @click="currentView = 'leads'" class="text-blue-900 hover:text-blue-700 font-medium" :class="{'border-b-2 border-blue-600': currentView === 'leads'}">
+                            <i class="bi bi-list-check mr-1"></i> Leads
+                        </button>
+                        <button @click="currentView = 'campaigns'" class="text-blue-900 hover:text-blue-700 font-medium" :class="{'border-b-2 border-blue-600': currentView === 'campaigns'}">
+                            <i class="bi bi-megaphone mr-1"></i> Campaigns
+                        </button>
+                        <button @click="currentView = 'chat'" class="text-blue-900 hover:text-blue-700 font-medium" :class="{'border-b-2 border-blue-600': currentView === 'chat'}">
+                            <i class="bi bi-chat-dots mr-1"></i> Chat
+                        </button>
+                        <button v-if="userRole === 'employee'" @click="currentView = 'profile'" class="text-blue-900 hover:text-blue-700 font-medium" :class="{'border-b-2 border-blue-600': currentView === 'profile'}">
+                            <i class="bi bi-person-badge mr-1"></i> My Profile
+                        </button>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-4">
+                        <span class="text-blue-900">
+                            <i class="bi bi-person-circle mr-1"></i> {{currentUser.name || loginData.username}}
+                            <span class="ml-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">{{userRole}}</span>
+                        </span>
+                        <button @click="logout" class="text-red-600 hover:text-red-700">
+                            <i class="bi bi-box-arrow-right mr-1"></i> Logout
+                        </button>
+                    </div>
+                    
+                    <!-- Mobile menu button -->
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-blue-900 hover:text-blue-700">
+                        <i class="bi" :class="mobileMenuOpen ? 'bi-x-lg' : 'bi-list'"></i>
+                    </button>
+                </div>
+                
+                <!-- Mobile menu -->
+                <div v-if="mobileMenuOpen" class="md:hidden mt-4 space-y-2">
+                    <button @click="navigateMobile('dashboard')" class="block w-full text-left p-2 text-blue-900 hover:bg-blue-100 rounded">
+                        <i class="bi bi-speedometer2 mr-1"></i> Dashboard
+                    </button>
+                    <button v-if="userRole === 'admin'" @click="navigateMobile('employees')" class="block w-full text-left p-2 text-blue-900 hover:bg-blue-100 rounded">
+                        <i class="bi bi-people mr-1"></i> Employees
+                    </button>
+                    <button @click="navigateMobile('leads')" class="block w-full text-left p-2 text-blue-900 hover:bg-blue-100 rounded">
+                        <i class="bi bi-list-check mr-1"></i> Leads
+                    </button>
+                    <button @click="navigateMobile('campaigns')" class="block w-full text-left p-2 text-blue-900 hover:bg-blue-100 rounded">
+                        <i class="bi bi-megaphone mr-1"></i> Campaigns
+                    </button>
+                    <button @click="navigateMobile('chat')" class="block w-full text-left p-2 text-blue-900 hover:bg-blue-100 rounded">
+                        <i class="bi bi-chat-dots mr-1"></i> Chat
+                    </button>
+                    <button v-if="userRole === 'employee'" @click="navigateMobile('profile')" class="block w-full text-left p-2 text-blue-900 hover:bg-blue-100 rounded">
+                        <i class="bi bi-person-badge mr-1"></i> My Profile
+                    </button>
+                    <div class="border-t border-blue-200 my-2 pt-2">
+                        <div class="p-2 text-blue-900">
+                            <i class="bi bi-person-circle mr-1"></i> {{currentUser.name || loginData.username}}
+                            <span class="ml-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">{{userRole}}</span>
+                        </div>
+                        <button @click="logout" class="block w-full text-left p-2 text-red-600 hover:bg-red-50 rounded">
+                            <i class="bi bi-box-arrow-right mr-1"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <div class="container mx-auto p-4 md:p-6">
+                <!-- Dashboard View -->
+                <div v-if="currentView === 'dashboard'" class="space-y-6">
+                    <!-- Welcome Banner -->
+                    <div class="glass-effect p-6 rounded-xl">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                            <div>
+                                <h2 class="text-2xl font-bold text-blue-900">Welcome, {{currentUser.name || loginData.username}}!</h2>
+                                <p class="text-blue-700 mt-1">{{new Date().toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}}</p>
+                            </div>
+                            <div class="mt-4 md:mt-0">
+                                <div v-if="userRole === 'admin'" class="flex space-x-3">
+                                    <button @click="showCompanySettings = true" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                                        <i class="bi bi-gear mr-1"></i> Company Settings
+                                    </button>
+                                    <button @click="exportToExcel" class="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
+                                        <i class="bi bi-file-earmark-excel mr-1"></i> Export Data
+                                    </button>
+                                </div>
+                                <div v-else>
+                                    <button @click="showAddLead = true; leadForm = { campaignCode: '' }" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                                        <i class="bi bi-plus-circle mr-1"></i> Submit New Lead
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="glass-effect p-6 rounded-xl hover:shadow-lg transition duration-300">
+                            <div class="flex justify-between">
+                                <div>
+                                    <p class="text-blue-900 font-medium">Total Employees</p>
+                                    <h3 class="text-3xl font-bold text-blue-600">{{employees.length}}</h3>
+                                </div>
+                                <div class="rounded-full h-12 w-12 bg-blue-100 flex items-center justify-center">
+                                    <i class="bi bi-people text-xl text-blue-600"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-blue-700 mt-4">
+                                <span class="font-medium">{{getTodayAttendance()}}</span> present today
+                            </p>
+                        </div>
+                        
+                        <div class="glass-effect p-6 rounded-xl hover:shadow-lg transition duration-300">
+                            <div class="flex justify-between">
+                                <div>
+                                    <p class="text-blue-900 font-medium">Total Leads</p>
+                                    <h3 class="text-3xl font-bold text-blue-600">{{leads.length}}</h3>
+                                </div>
+                                <div class="rounded-full h-12 w-12 bg-blue-100 flex items-center justify-center">
+                                    <i class="bi bi-list-check text-xl text-blue-600"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-blue-700 mt-4">
+                                <span class="font-medium">{{getTodayLeads()}}</span> leads today
+                            </p>
+                        </div>
+                        
+                        <div class="glass-effect p-6 rounded-xl hover:shadow-lg transition duration-300">
+                            <div class="flex justify-between">
+                                <div>
+                                    <p class="text-blue-900 font-medium">Campaigns</p>
+                                    <h3 class="text-3xl font-bold text-blue-600">{{campaigns.length}}</h3>
+                                </div>
+                                <div class="rounded-full h-12 w-12 bg-blue-100 flex items-center justify-center">
+                                    <i class="bi bi-megaphone text-xl text-blue-600"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-blue-700 mt-4">
+                                <span class="font-medium">{{getActiveCampaigns()}}</span> active campaigns
+                            </p>
+                        </div>
+                        
+                        <div class="glass-effect p-6 rounded-xl hover:shadow-lg transition duration-300">
+                            <div class="flex justify-between">
+                                <div>
+                                    <p class="text-blue-900 font-medium">Sales</p>
+                                    <h3 class="text-3xl font-bold text-blue-600">{{getTotalSales()}}</h3>
+                                </div>
+                                <div class="rounded-full h-12 w-12 bg-blue-100 flex items-center justify-center">
+                                    <i class="bi bi-graph-up text-xl text-blue-600"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-blue-700 mt-4">
+                                <span class="font-medium">{{getConversionRate()}}%</span> conversion rate
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Activity -->
+                    <div class="glass-effect p-6 rounded-xl">
+                        <h3 class="text-xl font-bold text-blue-900 mb-4">Recent Activity</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="text-left py-3 px-4 font-medium text-blue-900">Date</th>
+                                        <th class="text-left py-3 px-4 font-medium text-blue-900">Activity</th>
+                                        <th class="text-left py-3 px-4 font-medium text-blue-900">User</th>
+                                        <th class="text-left py-3 px-4 font-medium text-blue-900">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="(activity, index) in recentActivities.slice(0,5)" :key="index" class="hover:bg-blue-50">
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{formatDate(activity.timestamp)}}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{activity.type}}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{activity.user}}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{activity.details}}</td>
+                                    </tr>
+                                    <tr v-if="recentActivities.length === 0">
+                                        <td colspan="4" class="px-4 py-3 text-center text-gray-500">No recent activities</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employees View -->
+                <div v-if="currentView === 'employees'" class="space-y-6">
+                    <!-- Header and Actions -->
+                    <div class="glass-effect p-6 rounded-xl">
+                        <div class="flex flex-col md:flex-row justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-blue-900">Employees Management</h2>
+                            <div class="mt-4 md:mt-0 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <div class="relative">
+                                    <input type="text" v-model="employeeSearch" placeholder="Search employees..." class="pl-10 pr-3 py-2 border rounded-lg">
+                                    <i class="bi bi-search absolute top-3 left-3 text-gray-400"></i>
+                                </div>
+                                <button @click="showAddEmployee = true; editingEmployee = null; resetEmployeeForm()" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-plus-circle mr-1"></i> Add Employee
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Employee List -->
+                        <div class="overflow-x-auto rounded-lg shadow">
+                            <table class="w-full bg-white">
+                                <thead>
+                                    <tr class="bg-blue-50 text-blue-900">
+                                        <th class="p-3 text-left">Name</th>
+                                        <th class="p-3 text-left">Email</th>
+                                        <th class="p-3 text-left">Position</th>
+                                        <th class="p-3 text-left">Status</th>
+                                        <th class="p-3 text-left">Performance</th>
+                                        <th class="p-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="emp in filteredEmployees" :key="emp.id" class="hover:bg-blue-50">
+                                        <td class="p-3 font-medium text-gray-800">{{emp.name}}</td>
+                                        <td class="p-3">{{emp.email}}</td>
+                                        <td class="p-3">{{emp.position}}</td>
+                                        <td class="p-3">
+                                            <span :class="emp.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 py-1 rounded-full text-xs font-medium">
+                                                {{emp.status}}
+                                            </span>
+                                        </td>
+                                        <td class="p-3">
+                                            <div class="flex items-center">
+                                                <div class="h-2 w-24 bg-gray-200 rounded-full mr-2">
+                                                    <div class="h-full rounded-full bg-blue-600" :style="{ width: `${getEmployeePerformance(emp)}%` }"></div>
+                                                </div>
+                                                <span class="text-xs">{{getEmployeePerformance(emp)}}%</span>
+                                            </div>
+                                        </td>
+                                        <td class="p-3">
+                                            <div class="flex justify-center space-x-2">
+                                                <button @click="viewEmployeeDetails(emp)" class="text-blue-600 hover:text-blue-800 p-1" title="View Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button @click="editEmployee(emp)" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button @click="toggleAttendance(emp)" class="p-1" :class="emp.status === 'Active' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'" :title="emp.status === 'Active' ? 'Mark Absent' : 'Mark Present'">
+                                                    <i class="bi" :class="emp.status === 'Active' ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                                                </button>
+                                                <button @click="deleteEmployee(emp.id)" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredEmployees.length === 0">
+                                        <td colspan="6" class="p-3 text-center text-gray-500">No employees found</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leads View -->
+                <div v-if="currentView === 'leads'" class="space-y-6">
+                    <!-- Header and Actions -->
+                    <div class="glass-effect p-6 rounded-xl">
+                        <div class="flex flex-col md:flex-row justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-blue-900">Leads Management</h2>
+                            <div class="mt-4 md:mt-0 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <div class="relative">
+                                    <input type="text" v-model="leadSearch" placeholder="Search leads..." class="pl-10 pr-3 py-2 border rounded-lg">
+                                    <i class="bi bi-search absolute top-3 left-3 text-gray-400"></i>
+                                </div>
+                                <button @click="showAddLead = true; editingLead = null; resetLeadForm()" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center">
+                                    <i class="bi bi-plus-circle mr-1"></i> Add Lead
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Filter Controls -->
+                        <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-blue-900 mb-1">Filter by Campaign</label>
+                                <select v-model="leadFilters.campaign" class="w-full p-2 border rounded-lg">
+                                    <option value="">All Campaigns</option>
+                                    <option v-for="campaign in campaigns" :key="campaign.id" :value="campaign.code">{{campaign.name}} ({{campaign.code}})</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-blue-900 mb-1">Filter by Agent</label>
+                                <select v-model="leadFilters.agent" class="w-full p-2 border rounded-lg">
+                                    <option value="">All Agents</option>
+                                    <option v-for="emp in employees" :key="emp.id" :value="emp.name">{{emp.name}}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-blue-900 mb-1">Start Date</label>
+                                <input type="date" v-model="leadFilters.startDate" class="w-full p-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-blue-900 mb-1">End Date</label>
+                                <input type="date" v-model="leadFilters.endDate" class="w-full p-2 border rounded-lg">
+                            </div>
+                        </div>
+                        
+                        <!-- Leads Table -->
+                        <div class="overflow-x-auto rounded-lg shadow">
+                            <table class="w-full bg-white">
+                                <thead>
+                                    <tr class="bg-blue-50 text-blue-900">
+                                        <th class="p-3 text-left">Date</th>
+                                        <th class="p-3 text-left">Name</th>
+                                        <th class="p-3 text-left">Phone</th>
+                                        <th class="p-3 text-left">Email</th>
+                                        <th class="p-3 text-left">Campaign</th>
+                                        <th class="p-3 text-left">Agent</th>
+                                        <th class="p-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="lead in filteredLeads" :key="lead.id" class="hover:bg-blue-50">
+                                        <td class="p-3">{{formatDate(lead.date)}}</td>
+                                        <td class="p-3 font-medium text-gray-800">{{lead.firstName}} {{lead.lastName}}</td>
+                                        <td class="p-3">{{lead.phone}}</td>
+                                        <td class="p-3">{{lead.email}}</td>
+                                        <td class="p-3">
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{{lead.campaignCode}}</span>
+                                        </td>
+                                        <td class="p-3">{{lead.agentName}}</td>
+                                        <td class="p-3">
+                                            <div class="flex justify-center space-x-2">
+                                                <button @click="viewLeadDetails(lead)" class="text-blue-600 hover:text-blue-800 p-1" title="View Details">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button v-if="userRole === 'admin' || (userRole === 'employee' && currentUser.name === lead.agentName && isLeadEditable(lead))" @click="editLead(lead)" class="text-blue-600 hover:text-blue-800 p-1" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button v-if="userRole === 'admin'" @click="deleteLead(lead.id)" class="text-red-600 hover:text-red-800 p-1" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="filteredLeads.length === 0">
+                                        <td colspan="7" class="p-3 text-center text-gray-500">No leads found</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="text-sm text-gray-600">
+                                Showing {{paginatedLeads.length}} of {{filteredLeads.length}} leads
+                            </div>
+                            <div class="flex space-x-2">
+                                <button @click="leadPage = Math.max(1, leadPage - 1)" class="px-3 py-1 border rounded-md" :disabled="leadPage === 1">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <button v-for="page in totalLeadPages" :key="page" @click="leadPage = page" 
+                                    class="px-3 py-1 border rounded-md" 
+                                    :class="leadPage === page ? 'bg-blue-100 border-blue-300' : ''">
+                                    {{page}}
+                                </button>
+                                <button @click="leadPage = Math.min(totalLeadPages, leadPage + 1)" class="px-3 py-1 border rounded-md" :disabled="leadPage === totalLeadPages || totalLeadPages === 0">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campaigns View -->
+                <div v-if="currentView === 'campaigns'" class="space-y-6">
+                    <!-- Header and Actions -->
+                    <div class="glass-effect p-6 rounded-xl">
+                        <div class="flex flex-col md:flex-row justify-between mb-4">
+                            <h2 class="text-2xl font-bold text-blue-900">Campaign Management</h2>
+                            <div v-if="userRole === 'admin'" class="mt-4 md:mt-0">
+                                <button @click="showAddCampaign = true; editingCampaign = null; resetCampaignForm()" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+                                    <i class="bi bi-plus-circle mr-1"></i> Add Campaign
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Campaign Categories -->
+                        <div class="mb-6">
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <button @click="selectedCategory = ''" 
+                                    class="px-4 py-2 rounded-full text-sm"
+                                    :class="selectedCategory === '' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'">
+                                    All
+                                </button>
+                                <button v-for="category in uniqueCategories" :key="category" 
+                                    @click="selectedCategory = category" 
+                                    class="px-4 py-2 rounded-full text-sm"
+                                    :class="selectedCategory === category ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'">
+                                    {{category}}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Campaign Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div v-for="campaign in filteredCampaigns" :key="campaign.id" class="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition duration-200">
+                                <div class="p-4 border-b bg-blue-50">
+                                    <div class="flex justify-between">
+                                        <h3 class="font-bold text-lg text-blue-900">{{campaign.name}}</h3>
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{{campaign.code}}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 mt-1">{{campaign.category}}</p>
+                                </div>
+                                <div class="p-4">
+                                    <p class="text-sm text-gray-700 mb-3">{{campaign.description || 'No description available'}}</p>
+                                    
+                                    <div class="flex items-center mb-3">
+                                        <div class="h-2 w-full bg-gray-200 rounded-full">
+                                            <div class="h-full rounded-full bg-blue-600" :style="{ width: `${getCampaignProgress(campaign)}%` }"></div>
+                                        </div>
+                                        <span class="ml-2 text-xs">{{getCampaignProgress(campaign)}}%</span>
+                                    </div>
+                                    
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-600">
+                                            <i class="bi bi-people mr-1"></i> {{getCampaignLeads(campaign).length}} leads
+                                        </span>
+                                        <span :class="campaign.status === 'Active' ? 'text-green-600' : 'text-red-600'">
+                                            <i class="bi" :class="campaign.status === 'Active' ? 'bi-check-circle' : 'bi-x-circle'"></i> {{campaign.status}}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-3 flex justify-end space-x-2 border-t">
+                                    <button v-if="userRole === 'employee' && campaign.status === 'Active'" @click="assignCampaignToLead(campaign)" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-600">
+                                        <i class="bi bi-plus-circle mr-1"></i> Add Lead
+                                    </button>
+                                    <button @click="viewCampaignDetails(campaign)" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-600">
+                                        <i class="bi bi-eye mr-1"></i> Details
+                                    </button>
+                                    <button v-if="userRole === 'admin'" @click="editCampaign(campaign)" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded border border-blue-600">
+                                        <i class="bi bi-pencil mr-1"></i> Edit
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="filteredCampaigns.length === 0" class="col-span-full text-center py-8 text-gray-500">
+                                No campaigns found in this category
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat View -->
+                <div v-if="currentView === 'chat'" class="space-y-6">
+                    <div class="glass-effect rounded-xl overflow-hidden">
+                        <div class="p-6 bg-blue-50 border-b">
+                            <h2 class="text-2xl font-bold text-blue-900">Team Chat</h2>
+                        </div>
+                        
+                        <div class="flex h-[600px] flex-col md:flex-row">
+                            <!-- Contacts List -->
+                            <div class="w-full md:w-1/4 border-r bg-white overflow-y-auto">
+                                <div class="p-4 border-b">
+                                    <input type="text" placeholder="Search contacts..." class="w-full p-2 border rounded-lg">
+                                </div>
+                                <div class="divide-y">
+                                    <button @click="selectChat('team')" class="w-full text-left p-4 hover:bg-blue-50" :class="{'bg-blue-50': selectedChat === 'team'}">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="rounded-full bg-blue-100 h-10 w-10 flex items-center justify-center">
+                                                <i class="bi bi-people text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-medium text-gray-800">Team Chat</h4>
+                                                <p class="text-sm text-gray-500">Everyone</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button v-for="emp in employees" :key="emp.id" @click="selectChat(emp.id)" class="w-full text-left p-4 hover:bg-blue-50" :class="{'bg-blue-50': selectedChat === emp.id}">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="rounded-full bg-blue-100 h-10 w-10 flex items-center justify-center">
+                                                <span class="text-blue-600 font-bold">{{getInitials(emp.name)}}</span>
+                                            </div>
+                                            <div>
+                                                <h4 class="font-medium text-gray-800">{{emp.name}}</h4>
+                                                <p class="text-sm text-gray-500">{{emp.position}}</p>
+                                            </div>
+                                            <div v-if="emp.status === 'Active'" class="h-3 w-3 rounded-full bg-green-500 ml-auto"></div>
+                                            <div v-else class="h-3 w-3 rounded-full bg-gray-400 ml-auto"></div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Chat Window -->
+                            <div class="w-full md:w-3/4 flex flex-col bg-gray-50">
+                                <!-- Chat Header -->
+                                <div class="p-4 bg-white border-b flex items-center space-x-3">
+                                    <div v-if="selectedChat === 'team'" class="rounded-full bg-blue-100 h-10 w-10 flex items-center justify-center">
+                                        <i class="bi bi-people text-blue-600"></i>
+                                    </div>
+                                    <div v-else class="rounded-full bg-blue-100 h-10 w-10 flex items-center justify-center">
+                                        <span class="text-blue-600 font-bold">{{getInitials(getSelectedChatName())}}</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-gray-800">{{getSelectedChatName()}}</h4>
+                                        <p class="text-xs text-gray-500">{{selectedChat === 'team' ? employees.length + ' members' : getChatStatus()}}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Messages -->
+                                <div class="flex-1 p-4 overflow-y-auto" ref="messageContainer">
+                                    <div v-if="filteredMessages.length === 0" class="text-center py-10 text-gray-500">
+                                        No messages yet. Start the conversation!
+                                    </div>
+                                    
+                                    <div v-for="(message, index) in filteredMessages" :key="index" class="mb-4">
+                                        <div :class="message.sender === loginData.username ? 'flex justify-end' : 'flex justify-start'">
+                                            <div :class="message.sender === loginData.username ? 'bg-blue-600 text-white' : 'bg-white'" 
+                                                class="max-w-xs md:max-w-md py-2 px-4 rounded-lg shadow">
+                                                <div v-if="message.sender !== loginData.username" class="font-bold text-xs text-blue-600 mb-1">{{message.sender}}</div>
+                                                <p>{{message.text}}</p>
+                                                <p class="text-xs text-right mt-1" :class="message.sender === loginData.username ? 'text-blue-200' : 'text-gray-500'">
+                                                    {{formatTime(message.timestamp)}}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Message Input -->
+                                <div class="p-4 bg-white border-t">
+                                    <div class="flex space-x-2">
+                                        <input v-model="newMessage" @keyup.enter="sendMessage" type="text" placeholder="Type a message..." class="flex-1 p-2 border rounded-lg">
+                                        <button @click="sendMessage" class="bg-blue-600 text-white p-2 rounded-lg">
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Profile View (for employees) -->
+                <div v-if="currentView === 'profile' && userRole === 'employee'" class="space-y-6">
+                    <div class="glass-effect p-6 rounded-xl">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-blue-900">My Profile</h2>
+                            <button @click="editingProfile = true" class="mt-2 md:mt-0 bg-blue-600 text-white px-4 py-2 rounded-lg">
+                                <i class="bi bi-pencil mr-1"></i> Edit Profile
+                            </button>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="bg-blue-500 h-32 relative">
+                                <div class="absolute -bottom-16 left-6">
+                                    <div class="rounded-full bg-white p-1 shadow-lg">
+                                        <div class="rounded-full bg-blue-100 h-28 w-28 flex items-center justify-center">
+                                            <span class="text-4xl font-bold text-blue-600">{{getInitials(currentUser.name)}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-20 p-6">
+                                <h3 class="text-2xl font-bold text-gray-800">{{currentUser.name}}</h3>
+                                <p class="text-gray-600">{{currentUser.position}}</p>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                    <div>
+                                        <h4 class="font-bold text-gray-800 mb-4">Personal Information</h4>
+                                        <div class="space-y-3">
+                                            <div class="flex">
+                                                <span class="text-gray-600 w-24">Email:</span>
+                                                <span class="text-gray-800">{{currentUser.email}}</span>
+                                            </div>
+                                            <div class="flex">
+                                                <span class="text-gray-600 w-24">Phone:</span>
+                                                <span class="text-gray-800">{{currentUser.phone || 'Not provided'}}</span>
+                                            </div>
+                                            <div class="flex">
+                                                <span class="text-gray-600 w-24">Status:</span>
+                                                <span :class="currentUser.status === 'Active' ? 'text-green-600' : 'text-red-600'">
+                                                    <i class="bi" :class="currentUser.status === 'Active' ? 'bi-check-circle' : 'bi-x-circle'"></i> {{currentUser.status}}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <h4 class="font-bold text-gray-800 mb-4">Performance Metrics</h4>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <div class="flex justify-between mb-1">
+                                                    <span class="text-gray-600 text-sm">Leads Generated</span>
+                                                    <span class="text-blue-600 text-sm">{{getEmployeeLeads(currentUser).length}}</span>
+                                                </div>
+                                                <div class="h-2 w-full bg-gray-200 rounded-full">
+                                                    <div class="h-full rounded-full bg-blue-600" :style="{ width: `${getEmployeePerformance(currentUser)}%` }"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <div class="flex justify-between mb-1">
+                                                    <span class="text-gray-600 text-sm">Attendance Rate</span>
+                                                    <span class="text-blue-600 text-sm">{{getEmployeeAttendanceRate(currentUser)}}%</span>
+                                                </div>
+                                                <div class="h-2 w-full bg-gray-200 rounded-full">
+                                                    <div class="h-full rounded-full bg-green-600" :style="{ width: `${getEmployeeAttendanceRate(currentUser)}%` }"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <div class="flex justify-between mb-1">
+                                                    <span class="text-gray-600 text-sm">Sales Conversion</span>
+                                                    <span class="text-blue-600 text-sm">{{getEmployeeSalesRate(currentUser)}}%</span>
+                                                </div>
+                                                <div class="h-2 w-full bg-gray-200 rounded-full">
+                                                    <div class="h-full rounded-full bg-purple-600" :style="{ width: `${getEmployeeSalesRate(currentUser)}%` }"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Recent Activity -->
+                                <div class="mt-8">
+                                    <h4 class="font-bold text-gray-800 mb-4">Recent Activity</h4>
+                                    <div class="space-y-4">
+                                        <div v-for="lead in getEmployeeLeads(currentUser).slice(0, 5)" :key="lead.id" class="p-4 border rounded-lg">
+                                            <div class="flex justify-between">
+                                                <span class="text-blue-600 font-medium">Lead: {{lead.firstName}} {{lead.lastName}}</span>
+                                                <span class="text-gray-500 text-sm">{{formatDate(lead.date)}}</span>
+                                            </div>
+                                            <div class="mt-2 text-gray-700">
+                                                <span class="text-gray-600">Phone:</span> {{lead.phone}} | 
+                                                <span class="text-gray-600">Campaign:</span> {{lead.campaignCode}}
+                                            </div>
+                                        </div>
+                                        
+                                        <div v-if="getEmployeeLeads(currentUser).length === 0" class="text-center py-4 text-gray-500">
+                                            No recent activity found
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Change Password Section -->
+                                <div class="mt-8 border-t pt-6">
+                                    <h4 class="font-bold text-gray-800 mb-4">Security</h4>
+                                    <button @click="showChangePasswordModal = true" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg">
+                                        <i class="bi bi-key mr-1"></i> Change Password
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <!-- Company Settings Modal -->
+        <div v-if="showCompanySettings" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md modal-container">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">Company Settings</h3>
+                <form @submit.prevent="saveCompanySettings" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Company Name</label>
+                        <input v-model="companySettings.name" type="text" placeholder="Company Name" class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Company Logo</label>
+                        <div class="border rounded-lg p-4 flex items-center justify-center flex-col">
+                            <img v-if="companyLogo" :src="companyLogo" alt="Logo" class="h-20 mb-2">
+                            <input type="file" @change="handleLogoUpload" accept="image/*" class="w-full text-sm">
+                            <p class="text-xs text-gray-500 mt-2">Recommended size: 200x200 pixels</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Primary Color</label>
+                        <input v-model="companySettings.primaryColor" type="color" class="w-full p-2 h-10 border rounded-lg">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" @click="showCompanySettings = false" class="px-4 py-2 border rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add/Edit Employee Modal -->
+        <div v-if="showAddEmployee" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md modal-container">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">{{editingEmployee ? 'Edit' : 'Add'}} Employee</h3>
+                <form @submit.prevent="saveEmployee" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Name</label>
+                        <input v-model="employeeForm.name" type="text" placeholder="Full Name" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Email</label>
+                        <input v-model="employeeForm.email" type="email" placeholder="Email Address" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Phone</label>
+                        <input v-model="employeeForm.phone" type="tel" placeholder="Phone Number" class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Position</label>
+                        <input v-model="employeeForm.position" type="text" placeholder="Job Position" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Status</label>
+                        <select v-model="employeeForm.status" class="w-full p-2 border rounded-lg">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Password</label>
+                        <input v-model="employeeForm.password" type="password" placeholder="Set Employee Password" class="w-full p-2 border rounded-lg" :required="!editingEmployee">
+                        <p class="text-xs text-gray-500 mt-1">Password will be used for employee login</p>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" @click="showAddEmployee = false" class="px-4 py-2 border rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add/Edit Lead Modal -->
+        <div v-if="showAddLead" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-4xl modal-container">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">{{editingLead ? 'Edit' : 'Add'}} Lead</h3>
+                <form @submit.prevent="saveLead" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">First Name</label>
+                            <input v-model="leadForm.firstName" type="text" placeholder="First Name" class="w-full p-2 border rounded-lg" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Last Name</label>
+                            <input v-model="leadForm.lastName" type="text" placeholder="Last Name" class="w-full p-2 border rounded-lg" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Phone</label>
+                            <input v-model="leadForm.phone" type="tel" placeholder="Phone Number" class="w-full p-2 border rounded-lg" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Email</label>
+                            <input v-model="leadForm.email" type="email" placeholder="Email Address" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Address</label>
+                            <input v-model="leadForm.address" type="text" placeholder="Street Address" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">City</label>
+                            <input v-model="leadForm.city" type="text" placeholder="City" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">State</label>
+                            <input v-model="leadForm.state" type="text" placeholder="State" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Postal Code</label>
+                            <input v-model="leadForm.postalCode" type="text" placeholder="Postal Code" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Age</label>
+                            <input v-model="leadForm.age" type="number" placeholder="Age" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Campaign Code</label>
+                            <select v-model="leadForm.campaignCode" class="w-full p-2 border rounded-lg" required>
+                                <option value="">Select Campaign</option>
+                                <option v-for="campaign in campaigns" :key="campaign.id" :value="campaign.code" :disabled="campaign.status !== 'Active'">
+                                    {{campaign.name}} ({{campaign.code}}) {{campaign.status !== 'Active' ? '- Inactive' : ''}}
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Agent Name</label>
+                            <input v-if="userRole === 'employee'" v-model="leadForm.agentName" type="text" :value="currentUser.name" class="w-full p-2 border rounded-lg bg-gray-100" disabled>
+                            <select v-else v-model="leadForm.agentName" class="w-full p-2 border rounded-lg" required>
+                                <option value="">Select Agent</option>
+                                <option v-for="emp in employees" :key="emp.id" :value="emp.name">{{emp.name}}</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Agent Verifier</label>
+                            <input v-model="leadForm.agentVerifier" type="text" placeholder="Verification Code" class="w-full p-2 border rounded-lg">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Call Hangup Reason</label>
+                            <select v-model="leadForm.callHangupReason" class="w-full p-2 border rounded-lg">
+                                <option value="">Select Reason</option>
+                                <option value="C-01">C-01: Call Completed Successfully</option>
+                                <option value="C-02">C-02: Customer Hung Up</option>
+                                <option value="C-03">C-03: Technical Issues</option>
+                                <option value="C-04">C-04: Wrong Number</option>
+                                <option value="C-05">C-05: Not Interested</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Enrollment</label>
+                            <select v-model="leadForm.enrollment" class="w-full p-2 border rounded-lg">
+                                <option value="">Select Enrollment Status</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Enrolled">Enrolled</option>
+                                <option value="Declined">Declined</option>
+                                <option value="Follow-up">Follow-up Required</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Sale Completed</label>
+                            <select v-model="leadForm.saleCompleted" class="w-full p-2 border rounded-lg">
+                                <option :value="false">No</option>
+                                <option :value="true">Yes</option>
+                            </select>
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-blue-900 mb-1">Notes</label>
+                            <textarea v-model="leadForm.notes" placeholder="Additional Notes" class="w-full p-2 border rounded-lg" rows="3"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" @click="showAddLead = false" class="px-4 py-2 border rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Add/Edit Campaign Modal -->
+        <div v-if="showAddCampaign" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md modal-container">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">{{editingCampaign ? 'Edit' : 'Add'}} Campaign</h3>
+                <form @submit.prevent="saveCampaign" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Campaign Name</label>
+                        <input v-model="campaignForm.name" type="text" placeholder="Campaign Name" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Campaign Code</label>
+                        <input v-model="campaignForm.code" type="text" placeholder="Campaign Code (e.g. ACA-01)" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Category</label>
+                        <select v-model="campaignForm.category" class="w-full p-2 border rounded-lg" required>
+                            <option value="">Select Category</option>
+                            <option value="ACA">ACA</option>
+                            <option value="Auto Insurance">Auto Insurance</option>
+                            <option value="Home Insurance">Home Insurance</option>
+                            <option value="Health Insurance">Health Insurance</option>
+                            <option value="Life Insurance">Life Insurance</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Description</label>
+                        <textarea v-model="campaignForm.description" placeholder="Campaign Description" class="w-full p-2 border rounded-lg" rows="3"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Target Leads</label>
+                        <input v-model="campaignForm.target" type="number" placeholder="Target Number of Leads" class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Status</label>
+                        <select v-model="campaignForm.status" class="w-full p-2 border rounded-lg">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" @click="showAddCampaign = false" class="px-4 py-2 border rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- View Employee Details Modal -->
+        <div v-if="viewingEmployee" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-2xl modal-container">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-blue-900">Employee Details</h3>
+                    <button @click="viewingEmployee = null" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div v-if="viewingEmployee">
+                    <div class="flex items-center mb-6">
+                        <div class="rounded-full bg-blue-100 h-16 w-16 flex items-center justify-center mr-4">
+                            <span class="text-2xl font-bold text-blue-600">{{getInitials(viewingEmployee.name)}}</span>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold text-gray-800">{{viewingEmployee.name}}</h4>
+                            <p class="text-gray-600">{{viewingEmployee.position}}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h5 class="font-bold text-gray-800 mb-3">Contact Information</h5>
+                            <div class="space-y-2">
+                                <div class="flex">
+                                    <span class="text-gray-600 w-20">Email:</span>
+                                    <span class="text-gray-800">{{viewingEmployee.email}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-20">Phone:</span>
+                                    <span class="text-gray-800">{{viewingEmployee.phone || 'Not provided'}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-20">Status:</span>
+                                    <span :class="viewingEmployee.status === 'Active' ? 'text-green-600' : 'text-red-600'">
+                                        <i class="bi" :class="viewingEmployee.status === 'Active' ? 'bi-check-circle' : 'bi-x-circle'"></i> {{viewingEmployee.status}}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h5 class="font-bold text-gray-800 mb-3">Performance</h5>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-gray-600">Leads Generated</span>
+                                        <span class="text-blue-600">{{getEmployeeLeads(viewingEmployee).length}}</span>
+                                    </div>
+                                    <div class="h-2 w-full bg-gray-200 rounded-full">
+                                        <div class="h-full rounded-full bg-blue-600" :style="{ width: `${getEmployeePerformance(viewingEmployee)}%` }"></div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-gray-600">Sales Conversion Rate</span>
+                                        <span class="text-blue-600">{{getEmployeeSalesRate(viewingEmployee)}}%</span>
+                                    </div>
+                                    <div class="h-2 w-full bg-gray-200 rounded-full">
+                                        <div class="h-full rounded-full bg-green-600" :style="{ width: `${getEmployeeSalesRate(viewingEmployee)}%` }"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h5 class="font-bold text-gray-800 mb-3">Recent Activity</h5>
+                        <table class="w-full">
+                            <thead class="bg-blue-50">
+                                <tr>
+                                    <th class="p-2 text-left text-blue-900">Date</th>
+                                    <th class="p-2 text-left text-blue-900">Lead</th>
+                                    <th class="p-2 text-left text-blue-900">Campaign</th>
+                                    <th class="p-2 text-left text-blue-900">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="lead in getEmployeeLeads(viewingEmployee).slice(0, 5)" :key="lead.id" class="hover:bg-blue-50">
+                                    <td class="p-2">{{formatDate(lead.date)}}</td>
+                                    <td class="p-2">{{lead.firstName}} {{lead.lastName}}</td>
+                                    <td class="p-2">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{{lead.campaignCode}}</span>
+                                    </td>
+                                    <td class="p-2">{{lead.enrollment || 'Pending'}}</td>
+                                </tr>
+                                <tr v-if="getEmployeeLeads(viewingEmployee).length === 0">
+                                    <td colspan="4" class="p-2 text-center text-gray-500">No leads submitted yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end">
+                        <button @click="viewingEmployee = null" class="px-4 py-2 border rounded-lg">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- View Lead Details Modal -->
+        <div v-if="viewingLead" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-2xl modal-container">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-blue-900">Lead Details</h3>
+                    <button @click="viewingLead = null" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div v-if="viewingLead">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">ID: {{viewingLead.id}}</span>
+                            <h4 class="text-xl font-bold text-gray-800 mt-2">{{viewingLead.firstName}} {{viewingLead.lastName}}</h4>
+                            <p class="text-gray-600">Submitted on {{formatDate(viewingLead.date)}}</p>
+                        </div>
+                        
+                        <div>
+                            <span class="px-3 py-1 rounded-full text-sm font-medium" :class="viewingLead.saleCompleted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                                {{viewingLead.saleCompleted ? 'Sale Completed' : 'No Sale'}}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h5 class="font-bold text-gray-800 mb-3">Contact Information</h5>
+                            <div class="space-y-2">
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Phone:</span>
+                                    <span class="text-gray-800">{{viewingLead.phone}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Email:</span>
+                                    <span class="text-gray-800">{{viewingLead.email || 'Not provided'}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Age:</span>
+                                    <span class="text-gray-800">{{viewingLead.age || 'Not provided'}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Address:</span>
+                                    <span class="text-gray-800">
+                                        {{viewingLead.address ? `${viewingLead.address}, ${viewingLead.city || ''}, ${viewingLead.state || ''} ${viewingLead.postalCode || ''}` : 'Not provided'}}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h5 class="font-bold text-gray-800 mb-3">Campaign Information</h5>
+                            <div class="space-y-2">
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Campaign:</span>
+                                    <span class="text-gray-800">
+                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{{viewingLead.campaignCode}}</span>
+                                    </span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Agent:</span>
+                                    <span class="text-gray-800">{{viewingLead.agentName}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Verifier:</span>
+                                    <span class="text-gray-800">{{viewingLead.agentVerifier || 'Not provided'}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Call Status:</span>
+                                    <span class="text-gray-800">{{viewingLead.callHangupReason || 'Not recorded'}}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="text-gray-600 w-24">Enrollment:</span>
+                                    <span class="text-gray-800">{{viewingLead.enrollment || 'Pending'}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h5 class="font-bold text-gray-800 mb-2">Notes</h5>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-700">{{viewingLead.notes || 'No additional notes.'}}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button v-if="userRole === 'admin'" @click="editLead(viewingLead); viewingLead = null" class="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50">
+                            <i class="bi bi-pencil mr-1"></i> Edit
+                        </button>
+                        <button @click="viewingLead = null" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- View Campaign Details Modal -->
+        <div v-if="viewingCampaign" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-2xl modal-container">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-blue-900">Campaign Details</h3>
+                    <button @click="viewingCampaign = null" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div v-if="viewingCampaign">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">{{viewingCampaign.category}}</span>
+                            <h4 class="text-xl font-bold text-gray-800 mt-2">{{viewingCampaign.name}}</h4>
+                            <p class="text-gray-600">Code: {{viewingCampaign.code}}</p>
+                        </div>
+                        
+                        <div>
+                            <span class="px-3 py-1 rounded-full text-sm font-medium" :class="viewingCampaign.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                {{viewingCampaign.status}}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h5 class="font-bold text-gray-800 mb-2">Description</h5>
+                        <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">{{viewingCampaign.description || 'No description available.'}}</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h5 class="font-bold text-gray-800 mb-3">Campaign Progress</h5>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-gray-600">Leads Generated</span>
+                                    <span class="text-blue-600">{{getCampaignLeads(viewingCampaign).length}} / {{viewingCampaign.target || 'No target'}}</span>
+                                </div>
+                                <div class="h-2 w-full bg-gray-200 rounded-full">
+                                    <div class="h-full rounded-full bg-blue-600" :style="{ width: `${getCampaignProgress(viewingCampaign)}%` }"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-gray-600">Sales Conversion Rate</span>
+                                    <span class="text-blue-600">{{getCampaignSalesRate(viewingCampaign)}}%</span>
+                                </div>
+                                <div class="h-2 w-full bg-gray-200 rounded-full">
+                                    <div class="h-full rounded-full bg-green-600" :style="{ width: `${getCampaignSalesRate(viewingCampaign)}%` }"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h5 class="font-bold text-gray-800 mb-3">Top Performers</h5>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="p-2 text-left text-blue-900">Agent</th>
+                                        <th class="p-2 text-left text-blue-900">Leads</th>
+                                        <th class="p-2 text-left text-blue-900">Sales</th>
+                                        <th class="p-2 text-left text-blue-900">Conversion</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="(perf, index) in getCampaignTopPerformers(viewingCampaign)" :key="index" class="hover:bg-blue-50">
+                                        <td class="p-2">{{perf.agent}}</td>
+                                        <td class="p-2">{{perf.leads}}</td>
+                                        <td class="p-2">{{perf.sales}}</td>
+                                        <td class="p-2">{{perf.conversion}}%</td>
+                                    </tr>
+                                    <tr v-if="getCampaignTopPerformers(viewingCampaign).length === 0">
+                                        <td colspan="4" class="p-2 text-center text-gray-500">No leads submitted for this campaign</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button v-if="userRole === 'admin'" @click="editCampaign(viewingCampaign); viewingCampaign = null" class="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50">
+                            <i class="bi bi-pencil mr-1"></i> Edit
+                        </button>
+                        <button v-if="userRole === 'employee' && viewingCampaign.status === 'Active'" @click="assignCampaignToLead(viewingCampaign); viewingCampaign = null" class="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50">
+                            <i class="bi bi-plus-circle mr-1"></i> Add Lead
+                        </button>
+                        <button @click="viewingCampaign = null" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Change Password Modal -->
+        <div v-if="showChangePasswordModal" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">Change Password</h3>
+                <form @submit.prevent="changePassword" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Current Password</label>
+                        <input v-model="passwordForm.current" type="password" placeholder="Current Password" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">New Password</label>
+                        <input v-model="passwordForm.new" type="password" placeholder="New Password" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Confirm New Password</label>
+                        <input v-model="passwordForm.confirm" type="password" placeholder="Confirm New Password" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" @click="showChangePasswordModal = false" class="px-4 py-2 border rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Edit Profile Modal -->
+        <div v-if="editingProfile" class="fixed inset-0 bg-black bg-opacity-50 z-20 flex items-center justify-center p-4">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md">
+                <h3 class="text-xl font-bold mb-4 text-blue-900">Edit Profile</h3>
+                <form @submit.prevent="saveProfile" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Name</label>
+                        <input v-model="profileForm.name" type="text" placeholder="Your Name" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Email</label>
+                        <input v-model="profileForm.email" type="email" placeholder="Your Email" class="w-full p-2 border rounded-lg" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-blue-900 mb-1">Phone</label>
+                        <input v-model="profileForm.phone" type="tel" placeholder="Your Phone" class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" @click="editingProfile = false" class="px-4 py-2 border rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue
+
+        createApp({
+            setup() {
+                // Authentication state
+                const isLoggedIn = ref(false)
+                const loginData = ref({
+                    username: '',
+                    password: ''
+                })
+                const userRole = ref('employee') // 'admin' or 'employee'
+                const currentUser = ref({})
+                const mobileMenuOpen = ref(false)
+                
+                // App state
+                const currentView = ref('dashboard')
+                const showAddEmployee = ref(false)
+                const showAddLead = ref(false)
+                const showAddCampaign = ref(false)
+                const showCompanySettings = ref(false)
+                const showChangePasswordModal = ref(false)
+                const editingProfile = ref(false)
+                const editingEmployee = ref(null)
+                const editingLead = ref(null)
+                const editingCampaign = ref(null)
+                const viewingEmployee = ref(null)
+                const viewingLead = ref(null)
+                const viewingCampaign = ref(null)
+                const employees = ref([])
+                const leads = ref([])
+                const campaigns = ref([])
+                const attendanceHistory = ref([])
+                const messages = ref([])
+                const recentActivities = ref([])
+                const companyLogo = ref('')
+                
+                // Form data
+                const employeeForm = ref({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    position: '',
+                    status: 'Active',
+                    password: ''
+                })
+                
+                const leadForm = ref({
+                    firstName: '',
+                    lastName: '',
+                    phone: '',
+                    email: '',
+                    address: '',
+                    city: '',
+                    state: '',
+                    postalCode: '',
+                    age: '',
+                    campaignCode: '',
+                    agentName: '',
+                    agentVerifier: '',
+                    callHangupReason: '',
+                    enrollment: '',
+                    saleCompleted: false,
+                    notes: ''
+                })
+                
+                const campaignForm = ref({
+                    name: '',
+                    code: '',
+                    category: '',
+                    description: '',
+                    target: 100,
+                    status: 'Active'
+                })
+                
+                const profileForm = ref({
+                    name: '',
+                    email: '',
+                    phone: ''
+                })
+                
+                const passwordForm = ref({
+                    current: '',
+                    new: '',
+                    confirm: ''
+                })
+                
+                const companySettings = ref({
+                    name: 'AirBlue Leads',
+                    primaryColor: '#0066ff',
+                    logo: null
+                })
+                
+                // Search and filters
+                const employeeSearch = ref('')
+                const leadSearch = ref('')
+                const leadPage = ref(1)
+                const leadsPerPage = ref(10)
+                const selectedCategory = ref('')
+                const selectedChat = ref('team')
+                const newMessage = ref('')
+                
+                const leadFilters = ref({
+                    campaign: '',
+                    agent: '',
+                    startDate: '',
+                    endDate: ''
+                })
+                
+                // Load data from localStorage or use sample data
+                const loadData = () => {
+                    // Get data from localStorage or use empty arrays
+                    employees.value = JSON.parse(localStorage.getItem('employees') || '[]')
+                    leads.value = JSON.parse(localStorage.getItem('leads') || '[]')
+                    campaigns.value = JSON.parse(localStorage.getItem('campaigns') || '[]')
+                    attendanceHistory.value = JSON.parse(localStorage.getItem('attendance') || '[]')
+                    messages.value = JSON.parse(localStorage.getItem('messages') || '[]')
+                    recentActivities.value = JSON.parse(localStorage.getItem('activities') || '[]')
+                    companyLogo.value = localStorage.getItem('companyLogo') || ''
+                    
+                    // Load company settings
+                    const savedSettings = localStorage.getItem('companySettings')
+                    if (savedSettings) {
+                        companySettings.value = JSON.parse(savedSettings)
+                    }
+                    
+                    // If there's no data, initialize with sample data for demo
+                    if (employees.value.length === 0) {
+                        employees.value = [
+                            { id: 1, name: 'John Smith', email: 'john@airblue.com', phone: '555-123-4567', position: 'Sales Manager', status: 'Active', password: 'password' },
+                            { id: 2, name: 'Jane Doe', email: 'jane@airblue.com', phone: '555-234-5678', position: 'Sales Agent', status: 'Active', password: 'password' },
+                            { id: 3, name: 'Mike Johnson', email: 'mike@airblue.com', phone: '555-345-6789', position: 'Sales Agent', status: 'Inactive', password: 'password' }
+                        ]
+                        localStorage.setItem('employees', JSON.stringify(employees.value))
+                    }
+                    
+                    if (campaigns.value.length === 0) {
+                        campaigns.value = [
+                            { id: 1, name: 'Affordable Care Act Enrollment', code: 'ACA-01', category: 'ACA', description: 'Campaign for ACA open enrollment period', target: 100, status: 'Active' },
+                            { id: 2, name: 'Auto Insurance Quotes', code: 'AUTO-01', category: 'Auto Insurance', description: 'Promotional campaign for auto insurance quotes', target: 50, status: 'Active' },
+                            { id: 3, name: 'Health Insurance Bundle', code: 'HEALTH-01', category: 'Health Insurance', description: 'Bundled health insurance packages', target: 75, status: 'Inactive' }
+                        ]
+                        localStorage.setItem('campaigns', JSON.stringify(campaigns.value))
+                    }
+                    
+                    if (leads.value.length === 0) {
+                        const today = new Date().toISOString().split('T')[0]
+                        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                        
+                        leads.value = [
+                            { id: 1, date: today, firstName: 'Robert', lastName: 'Williams', phone: '555-111-2233', email: 'robert@example.com', address: '123 Main St', city: 'Los Angeles', state: 'CA', postalCode: '90001', age: '45', campaignCode: 'ACA-01', agentName: 'Jane Doe', agentVerifier: 'V123', callHangupReason: 'C-01', enrollment: 'Enrolled', saleCompleted: true },
+                            { id: 2, date: today, firstName: 'Mary', lastName: 'Johnson', phone: '555-222-3344', email: 'mary@example.com', address: '456 Oak Ave', city: 'New York', state: 'NY', postalCode: '10001', age: '32', campaignCode: 'AUTO-01', agentName: 'John Smith', agentVerifier: 'V124', callHangupReason: 'C-01', enrollment: 'Pending', saleCompleted: false },
+                            { id: 3, date: yesterday, firstName: 'James', lastName: 'Brown', phone: '555-333-4455', email: 'james@example.com', address: '789 Pine St', city: 'Chicago', state: 'IL', postalCode: '60007', age: '55', campaignCode: 'ACA-01', agentName: 'Jane Doe', agentVerifier: 'V125', callHangupReason: 'C-02', enrollment: 'Declined', saleCompleted: false }
+                        ]
+                        localStorage.setItem('leads', JSON.stringify(leads.value))
+                    }
+                    
+                    if (messages.value.length === 0) {
+                        const now = Date.now()
+                        messages.value = [
+                            { id: 1, sender: 'John Smith', recipient: 'team', text: 'Good morning team! Let\'s have a great day today.', timestamp: now - 7200000 },
+                            { id: 2, sender: 'Jane Doe', recipient: 'team', text: 'Morning! I already got two leads for ACA-01.', timestamp: now - 7000000 },
+                            { id: 3, sender: 'Mike Johnson', recipient: 'Jane Doe', text: 'Hey Jane, can you help me with the AUTO-01 campaign?', timestamp: now - 6000000 },
+                            { id: 4, sender: 'Jane Doe', recipient: 'Mike Johnson', text: 'Sure, I\'ll send you the script in 5 minutes.', timestamp: now - 5800000 },
+                            { id: 5, sender: 'John Smith', recipient: 'team', text: 'Remember everyone, the ACA deadline is next week!', timestamp: now - 3600000 }
+                        ]
+                        localStorage.setItem('messages', JSON.stringify(messages.value))
+                    }
+                    
+                    if (recentActivities.value.length === 0) {
+                        const now = Date.now()
+                        recentActivities.value = [
+                            { id: 1, type: 'Lead Added', user: 'Jane Doe', details: 'Added lead for Robert Williams (ACA-01)', timestamp: now - 3600000 },
+                            { id: 2, type: 'Lead Added', user: 'John Smith', details: 'Added lead for Mary Johnson (AUTO-01)', timestamp: now - 7200000 },
+                            { id: 3, type: 'Campaign Created', user: 'admin', details: 'Created new campaign: Health Insurance Bundle', timestamp: now - 86400000 },
+                            { id: 4, type: 'Employee Added', user: 'admin', details: 'Added new employee: Mike Johnson', timestamp: now - 172800000 }
+                        ]
+                        localStorage.setItem('activities', JSON.stringify(recentActivities.value))
+                    }
+                }
+                
+                // Login function
+                const login = () => {
+                    // Check for admin login
+                    if (loginData.value.username === 'admin' && loginData.value.password === 'admin') {
+                        isLoggedIn.value = true
+                        userRole.value = 'admin'
+                        currentUser.value = { name: 'Admin', position: 'Administrator', email: 'admin@airblue.com', status: 'Active' }
+                        loadData()
+                        addActivity('Login', 'admin', 'Admin logged in')
+                        
+                        // Set employee's own leads if they're logging in
+                    } else {
+                        // Check for employee login
+                        loadData() // First load data to check employee credentials
+                        const employee = employees.value.find(emp => 
+                            emp.email === loginData.value.username && 
+                            emp.password === loginData.value.password
+                        )
+                        
+                        if (employee) {
+                            isLoggedIn.value = true
+                            userRole.value = 'employee'
+                            currentUser.value = employee
+                            addActivity('Login', employee.name, `${employee.name} logged in`)
+                        } else {
+                            alert('Invalid credentials')
+                        }
+                    }
+                }
+                
+                // Logout function
+                const logout = () => {
+                    addActivity('Logout', currentUser.value.name || 'Admin', `${currentUser.value.name || 'Admin'} logged out`)
+                    isLoggedIn.value = false
+                    userRole.value = 'employee'
+                    currentUser.value = {}
+                    loginData.value = { username: '', password: '' }
+                    mobileMenuOpen.value = false
+                }
+                
+                // Mobile menu navigation
+                const navigateMobile = (view) => {
+                    currentView.value = view
+                    mobileMenuOpen.value = false
+                }
+                
+                // Reset form functions
+                const resetEmployeeForm = () => {
+                    employeeForm.value = {
+                        name: '',
+                        email: '',
+                        phone: '',
+                        position: '',
+                        status: 'Active',
+                        password: ''
+                    }
+                }
+                
+                const resetLeadForm = () => {
+                    leadForm.value = {
+                        firstName: '',
+                        lastName: '',
+                        phone: '',
+                        email: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        postalCode: '',
+                        age: '',
+                        campaignCode: '',
+                        agentName: userRole.value === 'employee' ? currentUser.value.name : '',
+                        agentVerifier: '',
+                        callHangupReason: '',
+                        enrollment: '',
+                        saleCompleted: false,
+                        notes: ''
+                    }
+                }
+                
+                const resetCampaignForm = () => {
+                    campaignForm.value = {
+                        name: '',
+                        code: '',
+                        category: '',
+                        description: '',
+                        target: 100,
+                        status: 'Active'
+                    }
+                }
+                
+                // Save functions
+                const saveEmployee = () => {
+                    if (editingEmployee.value) {
+                        const index = employees.value.findIndex(emp => emp.id === editingEmployee.value.id)
+                        const updatedEmployee = { 
+                            ...employees.value[index], 
+                            ...employeeForm.value, 
+                            // Don't update password if it's empty
+                            password: employeeForm.value.password || employees.value[index].password
+                        }
+                        employees.value.splice(index, 1, updatedEmployee)
+                        addActivity('Employee Updated', currentUser.value.name || 'Admin', `Updated employee: ${updatedEmployee.name}`)
+                    } else {
+                        const newEmployee = { 
+                            ...employeeForm.value, 
+                            id: Date.now(),
+                            password: employeeForm.value.password || 'password123' // Default password if not provided
+                        }
+                        employees.value.push(newEmployee)
+                        addActivity('Employee Added', currentUser.value.name || 'Admin', `Added new employee: ${newEmployee.name}`)
+                    }
+                    
+                    localStorage.setItem('employees', JSON.stringify(employees.value))
+                    showAddEmployee.value = false
+                    editingEmployee.value = null
+                    resetEmployeeForm()
+                }
+                
+                const saveLead = () => {
+                    // Set agent name if not already set (for employee users)
+                    if (userRole.value === 'employee' && !leadForm.value.agentName) {
+                        leadForm.value.agentName = currentUser.value.name
+                    }
+                    
+                    if (editingLead.value) {
+                        const index = leads.value.findIndex(lead => lead.id === editingLead.value.id)
+                        const updatedLead = { ...leads.value[index], ...leadForm.value }
+                        leads.value.splice(index, 1, updatedLead)
+                        addActivity('Lead Updated', currentUser.value.name || 'Admin', `Updated lead: ${updatedLead.firstName} ${updatedLead.lastName}`)
+                    } else {
+                        const today = new Date().toISOString().split('T')[0]
+                        const newLead = { 
+                            ...leadForm.value, 
+                            id: Date.now(),
+                            date: today
+                        }
+                        leads.value.push(newLead)
+                        addActivity('Lead Added', currentUser.value.name || 'Admin', `Added new lead: ${newLead.firstName} ${newLead.lastName}`)
+                    }
+                    
+                    localStorage.setItem('leads', JSON.stringify(leads.value))
+                    showAddLead.value = false
+                    editingLead.value = null
+                    resetLeadForm()
+                }
+                
+                const saveCampaign = () => {
+                    if (editingCampaign.value) {
+                        const index = campaigns.value.findIndex(camp => camp.id === editingCampaign.value.id)
+                        campaigns.value[index] = { ...campaignForm.value, id: editingCampaign.value.id }
+                        addActivity('Campaign Updated', currentUser.value.name || 'Admin', `Updated campaign: ${campaignForm.value.name}`)
+                    } else {
+                        const newCampaign = { ...campaignForm.value, id: Date.now() }
+                        campaigns.value.push(newCampaign)
+                        addActivity('Campaign Created', currentUser.value.name || 'Admin', `Created new campaign: ${newCampaign.name}`)
+                    }
+                    
+                    localStorage.setItem('campaigns', JSON.stringify(campaigns.value))
+                    showAddCampaign.value = false
+                    editingCampaign.value = null
+                    resetCampaignForm()
+                }
+                
+                const saveCompanySettings = () => {
+                    localStorage.setItem('companySettings', JSON.stringify(companySettings.value))
+                    showCompanySettings.value = false
+                    addActivity('Settings Updated', currentUser.value.name || 'Admin', 'Updated company settings')
+                }
+                
+                const saveProfile = () => {
+                    if (userRole.value === 'employee') {
+                        const index = employees.value.findIndex(emp => emp.id === currentUser.value.id)
+                        if (index !== -1) {
+                            const updatedEmployee = { ...employees.value[index], ...profileForm.value }
+                            employees.value.splice(index, 1, updatedEmployee)
+                            currentUser.value = updatedEmployee
+                            localStorage.setItem('employees', JSON.stringify(employees.value))
+                            addActivity('Profile Updated', currentUser.value.name, `${currentUser.value.name} updated their profile`)
+                        }
+                    }
+                    editingProfile.value = false
+                }
+                
+                const changePassword = () => {
+                    // Check if current password is correct
+                    if (userRole.value === 'employee') {
+                        if (passwordForm.value.current !== currentUser.value.password) {
+                            alert('Current password is incorrect')
+                            return
+                        }
+                        
+                        // Check if new passwords match
+                        if (passwordForm.value.new !== passwordForm.value.confirm) {
+                            alert('New passwords do not match')
+                            return
+                        }
+                        
+                        // Update password
+                        const index = employees.value.findIndex(emp => emp.id === currentUser.value.id)
+                        if (index !== -1) {
+                            employees.value[index].password = passwordForm.value.new
+                            currentUser.value.password = passwordForm.value.new
+                            localStorage.setItem('employees', JSON.stringify(employees.value))
+                            alert('Password changed successfully')
+                            addActivity('Password Changed', currentUser.value.name, `${currentUser.value.name} changed their password`)
+                        }
+                    }
+                    
+                    showChangePasswordModal.value = false
+                    passwordForm.value = { current: '', new: '', confirm: '' }
+                }
+                
+                // Delete functions
+                const deleteEmployee = (id) => {
+                    if (confirm('Are you sure you want to delete this employee?')) {
+                        const empToDelete = employees.value.find(emp => emp.id === id)
+                        employees.value = employees.value.filter(emp => emp.id !== id)
+                        localStorage.setItem('employees', JSON.stringify(employees.value))
+                        addActivity('Employee Deleted', currentUser.value.name || 'Admin', `Deleted employee: ${empToDelete?.name || id}`)
+                    }
+                }
+                
+                const deleteLead = (id) => {
+                    if (confirm('Are you sure you want to delete this lead?')) {
+                        const leadToDelete = leads.value.find(lead => lead.id === id)
+                        leads.value = leads.value.filter(lead => lead.id !== id)
+                        localStorage.setItem('leads', JSON.stringify(leads.value))
+                        addActivity('Lead Deleted', currentUser.value.name || 'Admin', `Deleted lead: ${leadToDelete ? (leadToDelete.firstName + ' ' + leadToDelete.lastName) : id}`)
+                    }
+                }
+                
+                // Edit functions
+                const editEmployee = (employee) => {
+                    editingEmployee.value = employee
+                    employeeForm.value = { 
+                        ...employee,
+                        password: '' // Don't show current password
+                    }
+                    showAddEmployee.value = true
+                }
+                
+                const editLead = (lead) => {
+                    editingLead.value = lead
+                    leadForm.value = { ...lead }
+                    showAddLead.value = true
+                }
+                
+                const editCampaign = (campaign) => {
+                    editingCampaign.value = campaign
+                    campaignForm.value = { ...campaign }
+                    showAddCampaign.value = true
+                }
+                
+                // View details functions
+                const viewEmployeeDetails = (employee) => {
+                    viewingEmployee.value = employee
+                }
+                
+                const viewLeadDetails = (lead) => {
+                    viewingLead.value = lead
+                }
+                
+                const viewCampaignDetails = (campaign) => {
+                    viewingCampaign.value = campaign
+                }
+                
+                // Toggle attendance
+                const toggleAttendance = (employee) => {
+                    const index = employees.value.findIndex(emp => emp.id === employee.id)
+                    const newStatus = employee.status === 'Active' ? 'Inactive' : 'Active'
+                    employees.value[index].status = newStatus
+                    localStorage.setItem('employees', JSON.stringify(employees.value))
+                    
+                    // Add to attendance history
+                    const today = new Date().toISOString().split('T')[0]
+                    const attendanceRecord = {
+                        date: today,
+                        employeeId: employee.id,
+                        employeeName: employee.name,
+                        status: newStatus
+                    }
+                    attendanceHistory.value.push(attendanceRecord)
+                    localStorage.setItem('attendance', JSON.stringify(attendanceHistory.value))
+                    
+                    addActivity(
+                        'Attendance Updated', 
+                        currentUser.value.name || 'Admin', 
+                        `${employee.name} marked as ${newStatus}`
+                    )
+                }
+                
+                // Stats and metrics functions
+                const getTodayAttendance = () => {
+                    return employees.value.filter(emp => emp.status === 'Active').length
+                }
+                
+                const getTodayLeads = () => {
+                    const today = new Date().toISOString().split('T')[0]
+                    return leads.value.filter(lead => lead.date === today).length
+                }
+                
+                const getActiveCampaigns = () => {
+                    return campaigns.value.filter(camp => camp.status === 'Active').length
+                }
+                
+                const getTotalSales = () => {
+                    return leads.value.filter(lead => lead.saleCompleted).length
+                }
+                
+                const getConversionRate = () => {
+                    if (leads.value.length === 0) return 0
+                    return Math.round((getTotalSales() / leads.value.length) * 100)
+                }
+                
+                const getEmployeeLeads = (employee) => {
+                    if (!employee) return []
+                    return leads.value.filter(lead => lead.agentName === employee.name)
+                }
+                
+                const getEmployeePerformance = (employee) => {
+                    if (!employee) return 0
+                    
+                    // Get all employees with leads
+                    const employeesWithLeads = employees.value.filter(emp => 
+                        leads.value.some(lead => lead.agentName === emp.name)
+                    )
+                    
+                    if (employeesWithLeads.length === 0) return 0
+                    
+                    // Get max leads by any employee
+                    const maxLeads = Math.max(
+                        ...employeesWithLeads.map(emp => 
+                            leads.value.filter(lead => lead.agentName === emp.name).length
+                        )
+                    )
+                    
+                    if (maxLeads === 0) return 0
+                    
+                    // Calculate performance percentage based on max leads
+                    const empLeads = leads.value.filter(lead => lead.agentName === employee.name).length
+                    return Math.round((empLeads / maxLeads) * 100)
+                }
+                
+                const getEmployeeAttendanceRate = (employee) => {
+                    if (!employee) return 0
+                    
+                    // For demo purposes, return random percentage between 70-100
+                    return Math.floor(Math.random() * 30) + 70
+                }
+                
+                const getEmployeeSalesRate = (employee) => {
+                    if (!employee) return 0
+                    
+                    const empLeads = getEmployeeLeads(employee)
+                    if (empLeads.length === 0) return 0
+                    
+                    const empSales = empLeads.filter(lead => lead.saleCompleted).length
+                    return Math.round((empSales / empLeads.length) * 100)
+                }
+                
+                const getCampaignLeads = (campaign) => {
+                    if (!campaign) return []
+                    return leads.value.filter(lead => lead.campaignCode === campaign.code)
+                }
+                
+                const getCampaignProgress = (campaign) => {
+                    if (!campaign || !campaign.target || campaign.target <= 0) return 0
+                    
+                    const campaignLeads = getCampaignLeads(campaign).length
+                    return Math.min(100, Math.round((campaignLeads / campaign.target) * 100))
+                }
+                
+                const getCampaignSalesRate = (campaign) => {
+                    if (!campaign) return 0
+                    
+                    const campaignLeads = getCampaignLeads(campaign)
+                    if (campaignLeads.length === 0) return 0
+                    
+                    const campaignSales = campaignLeads.filter(lead => lead.saleCompleted).length
+                    return Math.round((campaignSales / campaignLeads.length) * 100)
+                }
+                
+                const getCampaignTopPerformers = (campaign) => {
+                    if (!campaign) return []
+                    
+                    const campaignLeads = getCampaignLeads(campaign)
+                    if (campaignLeads.length === 0) return []
+                    
+                    // Group leads by agent
+                    const agentLeads = {}
+                    campaignLeads.forEach(lead => {
+                        if (!agentLeads[lead.agentName]) {
+                            agentLeads[lead.agentName] = { leads: 0, sales: 0 }
+                        }
+                        agentLeads[lead.agentName].leads++
+                        if (lead.saleCompleted) {
+                            agentLeads[lead.agentName].sales++
+                        }
+                    })
+                    
+                    // Convert to array and calculate conversion rate
+                    const performers = Object.keys(agentLeads).map(agent => ({
+                        agent,
+                        leads: agentLeads[agent].leads,
+                        sales: agentLeads[agent].sales,
+                        conversion: Math.round((agentLeads[agent].sales / agentLeads[agent].leads) * 100)
+                    }))
+                    
+                    // Sort by number of leads
+                    return performers.sort((a, b) => b.leads - a.leads)
+                }
+                
+                // Utility functions
+                const formatDate = (dateString) => {
+                    if (!dateString) return ''
+                    const options = { year: 'numeric', month: 'short', day: 'numeric' }
+                    return new Date(dateString).toLocaleDateString('en-US', options)
+                }
+                
+                const formatTime = (timestamp) => {
+                    if (!timestamp) return ''
+                    return new Date(timestamp).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit'
+                    })
+                }
+                
+                const getInitials = (name) => {
+                    if (!name) return ''
+                    return name.split(' ')
+                        .map(part => part[0])
+                        .join('')
+                        .toUpperCase()
+                }
+                
+                const addActivity = (type, user, details) => {
+                    const activity = {
+                        id: Date.now(),
+                        type,
+                        user,
+                        details,
+                        timestamp: Date.now()
+                    }
+                    recentActivities.value.unshift(activity)
+                    localStorage.setItem('activities', JSON.stringify(recentActivities.value))
+                }
+                
+                const exportToExcel = () => {
+                    // In a real app, this would generate an Excel file
+                    // For this demo, just show an alert
+                    alert('Exporting data to Excel...\nFeature would generate an Excel file with all leads data.')
+                    addActivity('Data Export', currentUser.value.name || 'Admin', 'Exported leads data to Excel')
+                }
+                
+                const handleLogoUpload = (event) => {
+                    const file = event.target.files[0]
+                    if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (e) => {
+                            companyLogo.value = e.target.result
+                            localStorage.setItem('companyLogo', e.target.result)
+                        }
+                        reader.readAsDataURL(file)
+                    }
+                }
+                
+                const assignCampaignToLead = (campaign) => {
+                    leadForm.value.campaignCode = campaign.code
+                    showAddLead.value = true
+                    editingLead.value = null
+                }
+                
+                // Chat functions
+                const selectChat = (id) => {
+                    selectedChat.value = id
+                }
+                
+                const getSelectedChatName = () => {
+                    if (selectedChat.value === 'team') {
+                        return 'Team Chat'
+                    } else {
+                        const emp = employees.value.find(e => e.id === selectedChat.value)
+                        return emp ? emp.name : ''
+                    }
+                }
+                
+                const getChatStatus = () => {
+                    if (selectedChat.value === 'team') {
+                        return 'Group Chat'
+                    } else {
+                        const emp = employees.value.find(e => e.id === selectedChat.value)
+                        return emp ? (emp.status === 'Active' ? 'Online' : 'Offline') : ''
+                    }
+                }
+                
+                const sendMessage = () => {
+                    if (!newMessage.value.trim()) return
+                    
+                    const message = {
+                        id: Date.now(),
+                        sender: currentUser.value.name || loginData.value.username,
+                        recipient: selectedChat.value === 'team' ? 'team' : getSelectedChatName(),
+                        text: newMessage.value.trim(),
+                        timestamp: Date.now()
+                    }
+                    
+                    messages.value.push(message)
+                    localStorage.setItem('messages', JSON.stringify(messages.value))
+                    newMessage.value = ''
+                }
+                
+                const isLeadEditable = (lead) => {
+                    // For demo, allow editing leads submitted within the last 24 hours
+                    const leadDate = new Date(lead.date).getTime()
+                    const now = Date.now()
+                    return (now - leadDate) < 86400000 // 24 hours in milliseconds
+                }
+                
+                // Computed properties
+                const filteredEmployees = computed(() => {
+                    if (!employeeSearch.value) return employees.value
+                    
+                    const search = employeeSearch.value.toLowerCase()
+                    return employees.value.filter(emp => 
+                        emp.name.toLowerCase().includes(search) ||
+                        emp.email.toLowerCase().includes(search) ||
+                        emp.position.toLowerCase().includes(search)
+                    )
+                })
+                
+                const filteredLeads = computed(() => {
+                    let result = leads.value
+                    
+                    // Filter by search term
+                    if (leadSearch.value) {
+                        const search = leadSearch.value.toLowerCase()
+                        result = result.filter(lead => 
+                            (lead.firstName + ' ' + lead.lastName).toLowerCase().includes(search) ||
+                            lead.phone.toLowerCase().includes(search) ||
+                            (lead.email && lead.email.toLowerCase().includes(search)) ||
+                            lead.campaignCode.toLowerCase().includes(search) ||
+                            lead.agentName.toLowerCase().includes(search)
+                        )
+                    }
+                    
+                    // Filter by campaign
+                    if (leadFilters.value.campaign) {
+                        result = result.filter(lead => lead.campaignCode === leadFilters.value.campaign)
+                    }
+                    
+                    // Filter by agent
+                    if (leadFilters.value.agent) {
+                        result = result.filter(lead => lead.agentName === leadFilters.value.agent)
+                    }
+                    
+                    // Filter by date range
+                    if (leadFilters.value.startDate) {
+                        result = result.filter(lead => lead.date >= leadFilters.value.startDate)
+                    }
+                    
+                    if (leadFilters.value.endDate) {
+                        result = result.filter(lead => lead.date <= leadFilters.value.endDate)
+                    }
+                    
+                    // For employee role, only show their own leads
+                    if (userRole.value === 'employee') {
+                        result = result.filter(lead => lead.agentName === currentUser.value.name)
+                    }
+                    
+                    return result.sort((a, b) => new Date(b.date) - new Date(a.date))
+                })
+                
+                const totalLeadPages = computed(() => {
+                    return Math.ceil(filteredLeads.value.length / leadsPerPage.value) || 1
+                })
+                
+                const paginatedLeads = computed(() => {
+                    const start = (leadPage.value - 1) * leadsPerPage.value
+                    const end = start + leadsPerPage.value
+                    return filteredLeads.value.slice(start, end)
+                })
+                
+                const uniqueCategories = computed(() => {
+                    return [...new Set(campaigns.value.map(camp => camp.category))]
+                        .filter(category => category) // Remove empty categories
+                })
+                
+                const filteredCampaigns = computed(() => {
+                    if (!selectedCategory.value) return campaigns.value
+                    return campaigns.value.filter(camp => camp.category === selectedCategory.value)
+                })
+                
+                const filteredMessages = computed(() => {
+                    if (selectedChat.value === 'team') {
+                        return messages.value.filter(msg => msg.recipient === 'team')
+                    } else {
+                        const currentUsername = currentUser.value.name || loginData.value.username
+                        const chatPartner = getSelectedChatName()
+                        
+                        return messages.value.filter(msg => 
+                            (msg.sender === currentUsername && msg.recipient === chatPartner) ||
+                            (msg.sender === chatPartner && msg.recipient === currentUsername)
+                        )
+                    }
+                })
+                
+                // Watch for profile edit
+                watch(editingProfile, (newVal) => {
+                    if (newVal) {
+                        profileForm.value = {
+                            name: currentUser.value.name,
+                            email: currentUser.value.email,
+                            phone: currentUser.value.phone || ''
+                        }
+                    }
+                })
+                
+                // Initialize data on component mount
+                onMounted(() => {
+                    // Check for saved login
+                    const savedUser = localStorage.getItem('currentUser')
+                    if (savedUser) {
+                        const user = JSON.parse(savedUser)
+                        loginData.value.username = user.username
+                        loginData.value.password = user.password
+                        login()
+                    }
+                    
+                    // Load logo
+                    companyLogo.value = localStorage.getItem('companyLogo') || ''
+                })
+
+                return {
+                    // State
+                    isLoggedIn,
+                    loginData,
+                    userRole,
+                    currentUser,
+                    mobileMenuOpen,
+                    currentView,
+                    showAddEmployee,
+                    showAddLead,
+                    showAddCampaign,
+                    showCompanySettings,
+                    showChangePasswordModal,
+                    editingProfile,
+                    editingEmployee,
+                    editingLead,
+                    editingCampaign,
+                    viewingEmployee,
+                    viewingLead,
+                    viewingCampaign,
+                    employees,
+                    leads,
+                    campaigns,
+                    messages,
+                    recentActivities,
+                    employeeForm,
+                    leadForm,
+                    campaignForm,
+                    passwordForm,
+                    profileForm,
+                    companySettings,
+                    companyLogo,
+                    employeeSearch,
+                    leadSearch,
+                    leadPage,
+                    leadsPerPage,
+                    leadFilters,
+                    selectedCategory,
+                    selectedChat,
+                    newMessage,
+                    
+                    // Computed
+                    filteredEmployees,
+                    filteredLeads,
+                    totalLeadPages,
+                    paginatedLeads,
+                    uniqueCategories,
+                    filteredCampaigns,
+                    filteredMessages,
+                    
+                    // Methods
+                    login,
+                    logout,
+                    navigateMobile,
+                    saveEmployee,
+                    saveLead,
+                    saveCampaign,
+                    saveCompanySettings,
+                    saveProfile,
+                    changePassword,
+                    deleteEmployee,
+                    deleteLead,
+                    editEmployee,
+                    editLead,
+                    editCampaign,
+                    viewEmployeeDetails,
+                    viewLeadDetails,
+                    viewCampaignDetails,
+                    toggleAttendance,
+                    getTodayAttendance,
+                    getTodayLeads,
+                    getActiveCampaigns,
+                    getTotalSales,
+                    getConversionRate,
+                    getEmployeeLeads,
+                    getEmployeePerformance,
+                    getEmployeeAttendanceRate,
+                    getEmployeeSalesRate,
+                    getCampaignLeads,
+                    getCampaignProgress,
+                    getCampaignSalesRate,
+                    getCampaignTopPerformers,
+                    formatDate,
+                    formatTime,
+                    getInitials,
+                    exportToExcel,
+                    handleLogoUpload,
+                    resetEmployeeForm,
+                    resetLeadForm,
+                    resetCampaignForm,
+                    assignCampaignToLead,
+                    selectChat,
+                    getSelectedChatName,
+                    getChatStatus,
+                    sendMessage,
+                    isLeadEditable,
+                    addActivity
+                }
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
